@@ -1,0 +1,67 @@
+version: "3"
+services:
+  zookeeper:
+    ports:
+      - "50000:2181"
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    extra_hosts:
+      - "host.docker.internal:172.17.0.1"
+
+  kafka:
+    container_name: kafka
+    ports:
+      - "50001:9092"
+      - "50002:9093"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_LISTENERS: INTERNAL://:9092,OUTSIDE://:9094
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,OUTSIDE://host.docker.internal:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_CREATE_TOPICS: "transaction:1:1"
+      KAFKA_ADVERTISED_HOST_NAME: host.docker.internal # change to 172.17.0.1 if running on Ubuntu
+    image: confluentinc/cp-kafka:latest
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+  control-center:
+    container_name: control_center
+    image: confluentinc/cp-enterprise-control-center:6.0.1
+    hostname: control-center
+    depends_on:
+      - kafka
+    ports:
+      - "9021:9021"
+    environment:
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: "kafka:9092"
+      CONTROL_CENTER_REPLICATION_FACTOR: 1
+      CONTROL_CENTER_CONNECT_CLUSTER: http://app-connect:8083
+      PORT: 9021
+    extra_hosts:
+      - "host.docker.internal:172.17.0.1"
+
+  producer:
+    depends_on:
+      - kafka
+    environment:
+      TOPIC: transaction
+      INTERNAL_KAFKA_ADDR: "kafka:9092"
+    build:
+      context: ./producer
+    ports:
+      - 3000:3000
+
+  consumer:
+    depends_on:
+      - kafka
+    environment:
+      TOPIC: transaction
+      INTERNAL_KAFKA_ADDR: "kafka:9092"
+    build:
+      context: ./consumer
+volumes: {}
