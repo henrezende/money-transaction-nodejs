@@ -12,8 +12,6 @@ routes.post("/transfer", async (req, res) => {
   });
   await req.producer.disconnect();
 
-  console.log("test ~~~~~~");
-
   return res.json(null);
 });
 
