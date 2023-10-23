@@ -1,20 +1,32 @@
-const { Kafka } = require("kafkajs");
+import { Kafka } from "kafkajs";
+import { consumeMessage } from "./src/consumer";
 
-const client = new Kafka({
-  clientId: "transfer-app",
-  brokers: [process.env.INTERNAL_KAFKA_ADDR],
-});
-const admin = client.admin();
-const child_process = require("child_process");
-
-const interval_id = setInterval(() => {
-  admin.listTopics((err, res) => {
-    if (res[1].metadata[process.env.TOPIC]) {
-      console.log("Kafka topic created");
-      clearInterval(interval_id);
-      child_process.execSync("npm start", { stdio: "inherit" });
-    } else {
-      console.log("Waiting for Kafka topic to be created");
-    }
+async function run() {
+  const kafka = new Kafka({
+    clientId: "transfer-app",
+    brokers: [process.env.INTERNAL_KAFKA_ADDR],
+    retry: {
+      initialRetryTime: 1000,
+      retries: 10,
+    },
   });
-}, 1000);
+
+  const consumer = kafka.consumer({ groupId: "transfer-group" });
+
+  await consumer.connect();
+  await consumer.subscribe({
+    topics: [
+      process.env.TOPIC_TRANSFER,
+      process.env.TOPIC_DEPOSIT,
+      process.env.TOPIC_WITHDRAW,
+    ],
+  });
+
+  await consumer.run({
+    eachMessage: async ({ topic, message }) => {
+      consumeMessage(topic, message);
+    },
+  });
+}
+
+run().catch(console.error);
