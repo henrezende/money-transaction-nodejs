@@ -1,2 +1,4 @@
 producer/node_modules
 producer/package-lock.json
+consumer/node_modules
+consumer/package-lock.json
