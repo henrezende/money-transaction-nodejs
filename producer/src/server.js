@@ -1,6 +1,6 @@
 import express from "express";
 import { Kafka } from "kafkajs";
-
+import bodyParser from "body-parser";
 import routes from "./routes";
 
 const app = express();
@@ -8,9 +8,10 @@ const app = express();
 const kafka = new Kafka({
   clientId: "transfer-app",
   brokers: [process.env.INTERNAL_KAFKA_ADDR],
+  idempotent: true,
   retry: {
     initialRetryTime: 400,
-    retries: 5,
+    retries: 6,
   },
 });
 
@@ -21,11 +22,10 @@ app.use((req, res, next) => {
 
   return next();
 });
-
+app.use(bodyParser.json());
 app.use(routes);
 
 async function run() {
-  // await producer.connect();
   app.listen(3000);
 }
 

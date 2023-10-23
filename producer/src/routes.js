@@ -5,22 +5,16 @@ const routes = express.Router();
 
 routes.post("/transfer", async (req, res) => {
   await req.producer.connect();
-  const message = {
-    user: { id: 1, name: "teste" },
-    grade: 10,
-  };
-
-  console.log("22--------------------------------------");
-
   await req.producer.send({
-    topic: process.env.TOPIC,
+    topic: process.env.TOPIC_TRANSFER,
     compression: CompressionTypes.GZIP,
-    messages: [{ value: JSON.stringify(message) }],
+    messages: [{ value: JSON.stringify(req.body) }],
   });
-
   await req.producer.disconnect();
 
-  return res.json({ ok: true });
+  console.log("test ~~~~~~");
+
+  return res.json(null);
 });
 
 routes.post("/deposit", async (req, res) => {
